@@ -21,7 +21,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.get("/api/test", async (req, res) => {
+app.get("/api/futoi", async (req, res) => {
   try {
     if (!MOEX_API_KEY) {
       return res.status(500).json({
@@ -30,17 +30,36 @@ app.get("/api/test", async (req, res) => {
       });
     }
 
-    const response = await fetch(
-      "https://apim.moex.com/iss/statistics/engines/futures/markets/forts/analytics/open-positions",
-      {
-        headers: {
-          Authorization: `Bearer ${MOEX_API_KEY}`
-        }
+    const ticker = String(req.query.ticker || "").trim().toLowerCase();
+    const from = String(req.query.from || "").trim();
+    const till = String(req.query.till || "").trim();
+
+    if (!ticker || !from || !till) {
+      return res.status(400).json({
+        ok: false,
+        error: "ticker, from, till are required"
+      });
+    }
+
+    const params = new URLSearchParams({
+      from,
+      till,
+      "iss.meta": "off",
+      "iss.only": "futoi",
+      limit: "50000"
+    });
+
+    const url = `https://apim.moex.com/iss/analyticalproducts/futoi/securities/${ticker}.json?${params.toString()}`;
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${MOEX_API_KEY}`
       }
-    );
+    });
 
     const text = await response.text();
-    res.status(response.status).send(text);
+    res.status(response.status).type("application/json").send(text);
   } catch (e) {
     res.status(500).json({
       ok: false,
